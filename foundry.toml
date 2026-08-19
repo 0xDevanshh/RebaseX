@@ -3,4 +3,19 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+# Pinned per assessment requirement (pragma ^0.8.24). Do not let Foundry
+# auto-select a newer solc just because it is available locally.
+solc_version = "0.8.24"
+
+remappings = ["@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"]
+
+[fuzz]
+runs = 512
+
+[invariant]
+runs = 256
+depth = 128
+fail_on_revert = true
+shrink_run_limit = 5000
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
