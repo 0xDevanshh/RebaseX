@@ -599,9 +599,7 @@ contract MockShareRegistryInvariantTest is ShareRegistryFixture {
         address[3] memory tokens = _tokens();
         for (uint256 i; i < tokens.length; ++i) {
             assertLe(
-                registry.allocatedShares(tokens[i]),
-                registry.custodiedShares(tokens[i]),
-                "allocated exceeded custodied"
+                registry.allocatedShares(tokens[i]), registry.custodiedShares(tokens[i]), "allocated exceeded custodied"
             );
         }
     }

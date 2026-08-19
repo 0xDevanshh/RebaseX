@@ -63,10 +63,7 @@ interface IShareRegistry {
     /// @param newCustodiedShares      Recorded share units after this call.
     /// @param allocatedShares         Currently minted against the record.
     event CustodiedSharesUpdated(
-        address indexed token,
-        uint256 previousCustodiedShares,
-        uint256 newCustodiedShares,
-        uint256 allocatedShares
+        address indexed token, uint256 previousCustodiedShares, uint256 newCustodiedShares, uint256 allocatedShares
     );
 
     /// @notice Emitted when a token reserves share units against its record (mint).
