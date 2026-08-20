@@ -255,6 +255,11 @@ contract MockRebasingEquityToken is IRebasingEquityToken, AccessControl {
     }
 
     /// @inheritdoc IRebasingEquityToken
+    function sharesToAmountCeil(uint256 shareAmount) external view returns (uint256) {
+        return _toAmountCeil(shareAmount);
+    }
+
+    /// @inheritdoc IRebasingEquityToken
     function amountToShares(uint256 tokenAmount) external view returns (uint256) {
         return _toShares(tokenAmount);
     }
@@ -447,6 +452,52 @@ contract MockRebasingEquityToken is IRebasingEquityToken, AccessControl {
 
         emit Approval(msg.sender, spender, amount);
         return true;
+    }
+
+    /// @inheritdoc IRebasingEquityToken
+    /// @dev ONE ALLOWANCE MAPPING, TWO DENOMINATIONS OF ACCESS TO IT. This writes
+    ///      the same `_allowances` slot {approve} writes, converted at the current
+    ///      multiplier and rounded UP with {_toAmountCeil}.
+    ///
+    ///      Rounding up is what makes the grant honest. {transferSharesFrom} debits
+    ///      `_toAmountCeil(shareAmount)`, so approving the floored value would be
+    ///      up to one wei short and the very transfer this approval exists to
+    ///      permit could revert. Ceil on both sides means a grant of `s` shares is
+    ///      immediately spendable as `s` shares.
+    ///
+    ///      Deliberately NOT a second mapping. A separate share-denominated
+    ///      allowance would have to be reconciled with the token-denominated one on
+    ///      every spend, and any disagreement between them is an authorisation bug
+    ///      by definition — one of the two would be granting access the owner did
+    ///      not intend. Deriving both views from a single stored quantity makes that
+    ///      class of bug unrepresentable.
+    ///
+    ///      Consequence carried over from {allowance}: what this grants is a fixed
+    ///      TOKEN allowance, so the SHARE permission it represents never grows and
+    ///      decays as the multiplier rises. See {allowanceShares}.
+    function approveShares(address spender, uint256 shareAmount) external returns (bool) {
+        if (spender == address(0)) revert ZeroAddress();
+
+        uint256 amount = _toAmountCeil(shareAmount);
+        _allowances[msg.sender][spender] = amount;
+
+        // Reports the TOKEN amount stored, not the share amount requested, because
+        // that is what the allowance now is and what every ERC-20 integrator will
+        // read back. Emitting the share figure here would put a quantity in the log
+        // that no `allowance` call ever returns.
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    /// @inheritdoc IRebasingEquityToken
+    /// @dev The floor half of the ceil/floor pair. `_toShares` of a stored
+    ///      allowance `A` is `floor(A * 1e18 / m)`, which is decreasing in `m`:
+    ///      spending power in share terms never increases across a corporate
+    ///      action. It can stay EQUAL across a small multiplier increase, because
+    ///      the ceil applied at approval time leaves up to one wei of headroom —
+    ///      it does not strictly decrease on every rebase.
+    function allowanceShares(address owner, address spender) external view returns (uint256) {
+        return _toShares(_allowances[owner][spender]);
     }
 
     /*//////////////////////////////////////////////////////////////

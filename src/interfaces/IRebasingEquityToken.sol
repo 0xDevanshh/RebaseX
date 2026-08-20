@@ -98,6 +98,18 @@ interface IRebasingEquityToken is IERC20Metadata {
     ///      worth before moving it, rather than inferring it from balance reads.
     function sharesToAmount(uint256 shareAmount) external view returns (uint256);
 
+    /// @notice Token value of `shareAmount` at the current multiplier, rounded UP.
+    /// @dev The allowance-side conversion. {transferSharesFrom} debits exactly
+    ///      this, so a caller that wants to grant permission over `shareAmount`
+    ///      shares must approve at least this many tokens — approving
+    ///      {sharesToAmount} instead can be one wei short and fail.
+    ///
+    ///      Rounds up, so it is NOT the inverse of {amountToShares}; it is the
+    ///      right inverse. `amountToShares(sharesToAmountCeil(s)) == s` holds for
+    ///      every `s` while the multiplier is at least `MULTIPLIER_SCALE`, which
+    ///      is the lossless round trip {approveShares} relies on.
+    function sharesToAmountCeil(uint256 shareAmount) external view returns (uint256);
+
     /// @notice Shares that `tokenAmount` resolves to at the current multiplier,
     ///         floored — i.e. exactly what {transfer} would move.
     /// @dev Pair with {sharesToAmount} to learn the shortfall before transferring:
@@ -147,4 +159,42 @@ interface IRebasingEquityToken is IERC20Metadata {
     ///      the token value of `shareAmount`, ROUNDED UP. Rounding up means a
     ///      spender can never move more value than was approved.
     function transferSharesFrom(address from, address to, uint256 shareAmount) external returns (bool);
+
+    /*//////////////////////////////////////////////////////////////
+                    SHARE-DENOMINATED ALLOWANCE VIEWS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Grant `spender` permission over exactly `shareAmount` shares of the
+    ///         caller's, measured at the CURRENT multiplier.
+    /// @dev Extension beyond the required interface, and a THIN DERIVED WRAPPER:
+    ///      there is one allowance mapping and it is token-denominated (see
+    ///      {allowance}). This is `approve(spender, sharesToAmountCeil(shareAmount))`
+    ///      and nothing more — it does not introduce a second, share-denominated
+    ///      allowance that could disagree with the token-denominated one.
+    ///
+    ///      REPLACES the allowance, it does not increment it, matching {approve}.
+    ///
+    ///      The share permission this grants is not fixed: because the stored
+    ///      allowance is token-denominated while the multiplier only rises, the
+    ///      share quantity it buys NEVER GROWS and decays as corporate actions
+    ///      accrue. Read back with {allowanceShares}. That decay is the deliberate
+    ///      fail-safe direction argued for in {allowance}; a caller relying on a
+    ///      standing share permission must refresh it.
+    /// @param spender     Party being granted permission.
+    /// @param shareAmount Shares to grant permission over, at the current multiplier.
+    function approveShares(address spender, uint256 shareAmount) external returns (bool);
+
+    /// @notice `spender`'s outstanding allowance from `owner`, expressed in SHARES
+    ///         at the current multiplier.
+    /// @dev The authoritative read for "how many shares can this spender still
+    ///      move": `allowanceShares(o, s) >= n` holds exactly when
+    ///      `transferSharesFrom(o, _, n)` would pass the allowance check, because
+    ///      both sides use the same ceil-then-floor conversion pair. The view and
+    ///      the spend agree by construction rather than by coincidence.
+    ///
+    ///      Equals `amountToShares(allowance(owner, spender))`, so it inherits the
+    ///      unlimited-allowance convention: a token allowance of `type(uint256).max`
+    ///      is never decremented, and this reports the share value of that maximum
+    ///      rather than a distinguishable "unlimited" sentinel.
+    function allowanceShares(address owner, address spender) external view returns (uint256);
 }

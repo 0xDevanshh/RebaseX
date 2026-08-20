@@ -7,7 +7,10 @@ libs = ["lib"]
 # auto-select a newer solc just because it is available locally.
 solc_version = "0.8.24"
 
-remappings = ["@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"]
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "safe-contracts/=lib/safe-smart-account/contracts/",
+]
 
 [fuzz]
 runs = 512
