@@ -40,12 +40,40 @@ interface IVenueAdapter {
     ///      the funds in hand to measure what it actually received before pricing
     ///      the venue call.
     ///
+    ///      ============ `order.amountIn` IS AUTHORITATIVE ============
+    ///      An implementation MUST execute EXACTLY `order.amountIn` of
+    ///      `order.assetIn` from its pre-funded balance, and MUST NOT touch any
+    ///      pre-existing holding. It must not swap its whole `assetIn` balance,
+    ///      and must not treat `order.amountIn` as a hint, a maximum, or an
+    ///      indicative figure to be re-derived from what it happens to hold.
+    ///
+    ///      WHY THIS IS A HARD REQUIREMENT: an adapter that sweeps its entire
+    ///      balance consumes anything already sitting at its address — residue
+    ///      from a prior settlement, or an unsolicited donation from anyone at
+    ///      all. The settlement engine asserts after every swap that the
+    ///      adapter's input holding returned to its pre-settlement level, so a
+    ///      sweeping adapter fails that assertion on every subsequent settlement.
+    ///      ONE WEI SENT TO SUCH AN ADAPTER BRICKS IT PERMANENTLY, at no cost to
+    ///      the sender and with no way to recover. Executing only the funded
+    ///      amount is what makes the adapter donation-resistant.
+    ///
+    ///      NOTE FOR CALLERS: the engine may pass an order whose `amountIn`
+    ///      differs from the client's original request — on a sell of a rebasing
+    ///      token the requested amount is resolved to a whole number of shares
+    ///      first, and the executable amount is derived back from those shares.
+    ///      The struct this function receives always carries the quantity that
+    ///      was actually funded, so honouring `order.amountIn` is always correct.
+    ///      ===========================================================
+    ///
     ///      An adapter must not retain client funds: everything it receives is
     ///      either spent on the venue or forwarded to `recipient`.
     ///
     ///      `amountOut` is the amount actually delivered, measured rather than
     ///      assumed. Enforcing `order.minAmountOut` is the caller's
-    ///      responsibility, so slippage policy stays in one place.
+    ///      responsibility, so slippage policy stays in one place. The caller does
+    ///      NOT rely on this return value for accounting — it measures its own
+    ///      balance and share deltas instead — but an implementation must still
+    ///      report it honestly, since it is what a direct integrator would read.
     /// @param order     The trade request.
     /// @param recipient Address to receive `order.assetOut`.
     /// @return amountOut Output amount actually delivered to `recipient`.

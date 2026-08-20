@@ -981,4 +981,121 @@ contract MockRebasingEquityTokenTest is RebasingTokenFixture {
             "registry allocation did not decrease by exactly the redeemed shares"
         );
     }
+
+    /*//////////////////////////////////////////////////////////////
+              CONVERSION REGRESSION PROPERTIES — FLOOR/CEIL PAIR
+
+        These pin the relationship between the FLOOR conversion used to resolve
+        a token amount to shares and the CEIL conversion used to debit an
+        allowance. The two round in opposite directions on purpose, and the
+        properties below are what make that safe rather than merely asymmetric.
+
+        ================== SCOPE — A4 ONLY, NOT A5 ==================
+        These properties cover the A4 case ONLY: `sharesIn` is RECOMPUTED from
+        `o.amountIn` at the SETTLEMENT-TIME multiplier, so the derivation
+
+            S = floor(A * 1e18 / m)
+
+        holds by construction and the allowance always fits. That is
+        multiplier-independent: whatever m is at settlement, S is derived from
+        it, so the ceil of S can never exceed A.
+
+        They do NOT cover the A5 case. There, a share quantity S is FIXED at
+        approval time via `approveShares(S)` and consumed LATER at a different
+        multiplier. S was not derived from the current allowance, so the proof
+        above does not apply: a stored token allowance of
+        ceil(S * m_old / 1e18) permits strictly FEWER than S shares once
+        m > m_old. That is a liveness failure — the sell reverts with
+        InsufficientAllowance — and it is what a `topUpEngineShares` path
+        exists to fix. NOTHING IN THIS FILE MAKES THAT TOP-UP REDUNDANT.
+        =============================================================
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev PROOF, recorded so a future reader does not have to re-derive it:
+    ///
+    ///        S = floor(A * 1e18 / m)   =>   S * m / 1e18 <= A
+    ///
+    ///      A is an integer and A >= S * m / 1e18. `ceil` is the LEAST integer
+    ///      that is >= its argument, so ceil(S * m / 1e18) <= A.
+    ///
+    ///      Holds for EVERY m — there is no lower bound on the multiplier
+    ///      required here, unlike the round-trip property below.
+    function test_CeilOfFlooredSharesNeverExceedsOriginalAmount() public {
+        // Strictly increasing: the multiplier is up-only, so the table has to be
+        // walked in order. Covers parity, one wei above parity, a non-dividing
+        // fractional multiplier, and a large one.
+        uint256[5] memory multipliers = [ONE, ONE + 1, 1.333e18, 7e18, 1e24];
+
+        // Chosen so A * 1e18 does not divide evenly by the multipliers above.
+        uint256[6] memory amounts = [uint256(1), 3, 999, 12_345_678_901_234_567, ONE + 7, 1e24 + 13];
+
+        for (uint256 i; i < multipliers.length; ++i) {
+            // The first entry IS the deployed multiplier, and the token is
+            // up-only, so rebasing to it would revert MultiplierNotIncreasing.
+            if (multipliers[i] > token.multiplier()) _rebase(multipliers[i]);
+
+            for (uint256 j; j < amounts.length; ++j) {
+                uint256 a = amounts[j];
+                uint256 s = token.amountToShares(a);
+                assertLe(
+                    token.toAmountCeil(s), a, "ceil(floor(A)) exceeded A -- an allowance debit could exceed approval"
+                );
+            }
+        }
+    }
+
+    /// @dev PROOF, and note what it depends on:
+    ///
+    ///        T = ceil(S * m / 1e18)  <  S * m / 1e18 + 1
+    ///
+    ///      so in SHARE terms
+    ///
+    ///        T * 1e18 / m - S  <  1e18 / m
+    ///
+    ///      At m >= 1e18 that residual is strictly less than ONE share-unit, so
+    ///      the floor recovers S exactly. The bound TIGHTENS as m grows.
+    ///
+    ///      THIS IS A PROPERTY THE UP-ONLY DECISION PURCHASES, NOT A PROPERTY OF
+    ///      THE ARITHMETIC ALONE. A bidirectional multiplier would allow
+    ///      m < 1e18, where 1e18 / m exceeds one share-unit and this equality
+    ///      degrades to `>=`. If the up-only policy is ever revisited, this test
+    ///      is one of the things that breaks, and it should be read as a cost of
+    ///      that change rather than a broken test.
+    function test_ShareRoundTripIsLosslessUnderUpOnlyMultiplier() public {
+        uint256[5] memory multipliers = [ONE, ONE + 1, 1.333e18, 7e18, 1e24];
+        uint256[6] memory shareAmounts = [uint256(1), 2, 1_000, 999_999_999_999_999_999, ONE + 5, 1e24 + 3];
+
+        for (uint256 i; i < multipliers.length; ++i) {
+            // The first entry IS the deployed multiplier, and the token is
+            // up-only, so rebasing to it would revert MultiplierNotIncreasing.
+            if (multipliers[i] > token.multiplier()) _rebase(multipliers[i]);
+
+            for (uint256 j; j < shareAmounts.length; ++j) {
+                uint256 s = shareAmounts[j];
+                assertEq(token.amountToShares(token.toAmountCeil(s)), s, "share round trip was lossy at m >= 1e18");
+            }
+        }
+    }
+
+    /// @dev Named `testFuzz_` rather than `fuzz_`: Foundry only collects functions
+    ///      whose name begins with `test`, so a `fuzz_`-prefixed function would
+    ///      compile, appear to exist, and silently never run.
+    function testFuzz_CeilOfFlooredSharesNeverExceedsOriginalAmount(uint256 a, uint256 m) public {
+        m = bound(m, ONE, 1e24);
+        a = bound(a, 1, 1e30);
+
+        if (m > ONE) _rebase(m);
+
+        uint256 s = token.amountToShares(a);
+        assertLe(token.toAmountCeil(s), a, "ceil(floor(A)) exceeded A");
+    }
+
+    function testFuzz_ShareRoundTripLossless(uint256 s, uint256 m) public {
+        m = bound(m, ONE, 1e24);
+        s = bound(s, 1, 1e30);
+
+        if (m > ONE) _rebase(m);
+
+        assertEq(token.amountToShares(token.toAmountCeil(s)), s, "share round trip was lossy");
+    }
 }
