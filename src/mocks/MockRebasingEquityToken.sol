@@ -264,6 +264,60 @@ contract MockRebasingEquityToken is IRebasingEquityToken, AccessControl {
         return _toShares(tokenAmount);
     }
 
+    /// @notice Token amount -> shares, rounded UP: `ceil(amount * 1e18 / multiplier)`.
+    /// @dev THE EXACT INVERSE OF THE FLOOR CONVERSION THE SETTLEMENT ENGINE USES
+    ///      TO DERIVE `executableAmountIn` FROM `sharesIn` ON A SELL. The Engine
+    ///      computes that figure as `sharesToAmount(sharesIn)` — a FLOOR — and
+    ///      this function recovers `sharesIn` from it without loss.
+    ///
+    ///      PROOF. Let `S = MULTIPLIER_SCALE`, `m` the current multiplier, and
+    ///      `sharesIn` any integer share quantity. Write
+    ///
+    ///          T = floor(sharesIn * m / S)   (what the Engine publishes)
+    ///          r = (sharesIn * m) mod S,   so   T * S = sharesIn * m - r
+    ///
+    ///      Then
+    ///
+    ///          T * S / m = sharesIn - r/m
+    ///
+    ///      and since `0 <= r < S <= m`, the residual `r/m` lies in `[0, 1)`.
+    ///      `ceil` of an integer minus something strictly less than one whole
+    ///      unit returns that integer, so
+    ///
+    ///          ceil(T * S / m) == sharesIn   exactly.
+    ///
+    ///      PROVIDED `m >= S`. That precondition is exactly where the up-only
+    ///      multiplier invariant is spent: at `m < S` the residual `r/m` could
+    ///      reach or exceed one, the ceil would overshoot, and the equality would
+    ///      degrade. This is the same precondition and the same reasoning as the
+    ///      already-established ceil-then-floor round trip
+    ///      (`amountToShares(sharesToAmountCeil(s)) == s`), applied in the
+    ///      opposite direction to the inverse pair of operations: there,
+    ///      floor recovers a ceil'd share quantity; here, ceil recovers a
+    ///      floor'd one.
+    ///
+    ///      SCOPE — READ THIS BEFORE CALLING. The exactness above holds ONLY when
+    ///      `amount` is itself the result of flooring an integer share quantity
+    ///      AT THE CURRENT MULTIPLIER — i.e. the Engine's `executableAmountIn`.
+    ///      It is NOT a general-purpose amount-to-shares helper. Handed an
+    ///      arbitrary client-supplied amount that was never floored by anything —
+    ///      an unresolved original order `amountIn`, say — this function returns
+    ///      `ceil` of a conversion and NOTHING ABOVE GUARANTEES THE CALLER
+    ///      ANYTHING: the result may exceed the shares that amount actually
+    ///      commands. Callers wanting the conservative direction for an arbitrary
+    ///      amount want {amountToShares}.
+    ///
+    ///      `Math.mulDiv` with `Rounding.Ceil` rather than the manual
+    ///      `(amount * S + m - 1) / m`: mulDiv carries the product at full 512-bit
+    ///      width, so a large `amount` whose `amount * S` would overflow uint256
+    ///      still converts, and only a genuinely out-of-range RESULT reverts. The
+    ///      manual form would revert on the intermediate.
+    /// @param tokenAmount Token amount to convert.
+    /// @return Ceiled share equivalent at the current multiplier.
+    function amountToSharesCeil(uint256 tokenAmount) external view returns (uint256) {
+        return Math.mulDiv(tokenAmount, MULTIPLIER_SCALE, _multiplier, Math.Rounding.Ceil);
+    }
+
     /*//////////////////////////////////////////////////////////////
                             PRIMARY PATH: MINT
     //////////////////////////////////////////////////////////////*/

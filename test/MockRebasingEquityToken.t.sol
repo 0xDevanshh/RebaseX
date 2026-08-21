@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {MockRebasingEquityToken} from "../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../src/mocks/MockShareRegistry.sol";
@@ -1097,5 +1098,81 @@ contract MockRebasingEquityTokenTest is RebasingTokenFixture {
         if (m > ONE) _rebase(m);
 
         assertEq(token.amountToShares(token.toAmountCeil(s)), s, "share round trip was lossy");
+    }
+
+    /*//////////////////////////////////////////////////////////////
+        INVERSE DIRECTION — CEIL RECOVERS A FLOOR'D SHARE QUANTITY
+
+        The two properties above cover ceil-then-floor: a share quantity is
+        ceiled to a token amount and the floor conversion recovers it. The two
+        below cover the OPPOSITE composition, floor-then-ceil, which is the one
+        the Settlement Engine's sell path actually produces.
+
+        WHY THIS PAIRING AND NOT ANOTHER. On a sell the Engine derives
+
+            executableAmountIn = sharesToAmount(sharesIn)   -- a FLOOR
+
+        so any consumer handed that figure and needing the share quantity back
+        must invert a floor, and only a CEIL does that losslessly. Inverting it
+        with `amountToShares` — the floor conversion — would land one share low
+        whenever the multiplier does not divide cleanly.
+
+        SAME PRECONDITION AS ABOVE: m >= 1e18, purchased by the up-only
+        multiplier policy. Both directions break together if that is revisited.
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice `amountToSharesCeil` recovers the Engine's `sharesIn` exactly from
+    ///         the `executableAmountIn` the Engine derived from it.
+    /// @dev `T` is built with the EXISTING floor helper `sharesToAmount`, i.e.
+    ///      literally the call [`SettlementEngine._toAmount`] makes, so this test
+    ///      exercises the real composition rather than a re-derivation of it.
+    function test_AmountToSharesCeilInvertsExecutableAmountExactly() public {
+        // Strictly increasing: the multiplier is up-only, so the table must be
+        // walked in order. Parity, one wei above parity, a non-dividing
+        // fractional multiplier, and a large one.
+        uint256[5] memory multipliers = [ONE, ONE + 1, 1.333e18, 7e18, 1e24];
+
+        // Chosen so `sharesIn * m` does not divide evenly by 1e18 for most
+        // entries above, forcing the floor to actually truncate.
+        uint256[6] memory shareAmounts = [uint256(1), 2, 1_000, 999_999_999_999_999_999, ONE + 5, 1e24 + 3];
+
+        for (uint256 i; i < multipliers.length; ++i) {
+            // The first entry IS the deployed multiplier, and the token is
+            // up-only, so rebasing to it would revert MultiplierNotIncreasing.
+            if (multipliers[i] > token.multiplier()) _rebase(multipliers[i]);
+
+            for (uint256 j; j < shareAmounts.length; ++j) {
+                uint256 sharesIn = shareAmounts[j];
+
+                // Exactly what SettlementEngine STEP 2 computes on a sell.
+                uint256 executableAmountIn = token.sharesToAmount(sharesIn);
+
+                assertEq(
+                    token.amountToSharesCeil(executableAmountIn),
+                    sharesIn,
+                    "ceil did not recover sharesIn from the floored executable amount"
+                );
+            }
+        }
+    }
+
+    /// @dev Named `testFuzz_` rather than `fuzz_` for the reason recorded on
+    ///      {testFuzz_CeilOfFlooredSharesNeverExceedsOriginalAmount}: Foundry
+    ///      collects only `test`-prefixed functions, so a `fuzz_`-prefixed one
+    ///      would compile, appear to exist, and silently never run.
+    ///
+    ///      `T` is computed INDEPENDENTLY here — `mulDiv` in the test rather than
+    ///      the token's own helper — so the assertion cannot be satisfied by two
+    ///      copies of the same bug. `Math.mulDiv` and not `sharesIn * m / ONE`
+    ///      because at the bounds below the product overflows uint256.
+    function testFuzz_AmountToSharesCeilRoundTripLossless(uint256 sharesIn, uint256 m) public {
+        m = bound(m, ONE, 1e24);
+        sharesIn = bound(sharesIn, 1, 1e30);
+
+        if (m > ONE) _rebase(m);
+
+        uint256 T = Math.mulDiv(sharesIn, m, ONE);
+
+        assertEq(token.amountToSharesCeil(T), sharesIn, "floor-then-ceil round trip was lossy");
     }
 }
