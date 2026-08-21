@@ -535,11 +535,12 @@ contract PrimaryReserveVaultTest is PrimaryReserveVaultFixture {
                 bool viaAdapter = (i % 2 == 0);
 
                 vm.prank(viaAdapter ? adapter : admin);
-                (bool ok,) = address(vault).call(
-                    viaAdapter
-                        ? abi.encodeCall(PrimaryReserveVault.withdrawTo, (recipient, amount))
-                        : abi.encodeCall(PrimaryReserveVault.adminWithdraw, (recipient, amount))
-                );
+                (bool ok,) = address(vault)
+                    .call(
+                        viaAdapter
+                            ? abi.encodeCall(PrimaryReserveVault.withdrawTo, (recipient, amount))
+                            : abi.encodeCall(PrimaryReserveVault.adminWithdraw, (recipient, amount))
+                    );
 
                 // ONLY a successful call changes the expected net. This is the
                 // assertion that a failed withdrawal is a true no-op.
