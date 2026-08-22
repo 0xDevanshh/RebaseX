@@ -9,7 +9,7 @@ import {Safe} from "safe-contracts/Safe.sol";
 import {ModuleManager} from "safe-contracts/base/ModuleManager.sol";
 import {Enum} from "safe-contracts/common/Enum.sol";
 
-import {MockStable} from "../mocks/SettlementMocks.sol";
+import {MockStable} from "../../src/mocks/MockStable.sol";
 import {SafeDeployer} from "./SafeDeployer.sol";
 
 /// @notice Smallest possible stand-in for `TradingModule`: it does nothing but
@@ -58,7 +58,7 @@ contract SafeDeployerTest is Test, SafeDeployer {
         module = new DummyModule();
         rogueModule = new DummyModule();
 
-        token = new MockStable("Mock USD", "mUSD");
+        token = new MockStable("Mock USD", "mUSD", 18);
         token.mint(safe, FUNDING);
 
         vm.label(OWNER, "owner");

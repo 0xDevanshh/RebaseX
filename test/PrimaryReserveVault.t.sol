@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {MockStable} from "../src/mocks/MockStable.sol";
 import {PrimaryReserveVault} from "../src/primary/PrimaryReserveVault.sol";
-import {MockStable} from "./mocks/SettlementMocks.sol";
 
 /*//////////////////////////////////////////////////////////////////////////
                         SHARED FIXTURE
@@ -30,7 +30,7 @@ abstract contract PrimaryReserveVaultFixture is Test {
     bytes32 internal constant ADAPTER_ROLE = keccak256("ADAPTER_ROLE");
 
     function _deployAndWire() internal {
-        stable = new MockStable("Mock Stable", "mUSD");
+        stable = new MockStable("Mock Stable", "mUSD", 18);
         vault = new PrimaryReserveVault(IERC20(address(stable)), admin);
 
         // ADAPTER_ROLE is granted post-deploy, mirroring the real wiring: the

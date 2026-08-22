@@ -15,10 +15,11 @@ import {IShareRegistry} from "../../src/interfaces/IShareRegistry.sol";
 import {OrderTypes} from "../../src/libraries/OrderTypes.sol";
 import {MockRebasingEquityToken} from "../../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../../src/mocks/MockShareRegistry.sol";
+import {MockStable} from "../../src/mocks/MockStable.sol";
 import {VenueRegistry} from "../../src/router/VenueRegistry.sol";
 
 import {SafeDeployer} from "../helpers/SafeDeployer.sol";
-import {MockAdapter, MockStable} from "../mocks/SettlementMocks.sol";
+import {MockAdapter} from "../mocks/SettlementMocks.sol";
 
 /// @title TradingModuleHandler
 /// @notice Drives {TradingModule}'s ENTIRE external surface as the operator and as
@@ -465,7 +466,7 @@ contract TradingModuleInvariantTest is Test, SafeDeployer {
         owners[0] = owner;
         safe = deploySafe(owners, 1);
 
-        stable = new MockStable("Stable", "USD");
+        stable = new MockStable("Stable", "USD", 18);
 
         vm.startPrank(admin);
         shareRegistry = new MockShareRegistry(admin);

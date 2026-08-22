@@ -13,12 +13,12 @@ import {IShareRegistry} from "../src/interfaces/IShareRegistry.sol";
 import {OrderTypes} from "../src/libraries/OrderTypes.sol";
 import {MockRebasingEquityToken} from "../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../src/mocks/MockShareRegistry.sol";
+import {MockStable} from "../src/mocks/MockStable.sol";
 import {VenueRegistry} from "../src/router/VenueRegistry.sol";
 
 import {
     MisbehavingStable,
     MockAdapter,
-    MockStable,
     MockZeroMultiplierToken,
     ReentrantRouterAdapter,
     ShortTransferEquity
@@ -100,8 +100,8 @@ contract SettlementEngineTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public virtual {
-        stable = new MockStable("Stable", "USD");
-        stableB = new MockStable("StableB", "USDB");
+        stable = new MockStable("Stable", "USD", 18);
+        stableB = new MockStable("StableB", "USDB", 18);
 
         vm.startPrank(admin);
         shareRegistry = new MockShareRegistry(admin);

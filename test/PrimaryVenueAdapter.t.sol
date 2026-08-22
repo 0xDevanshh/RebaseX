@@ -14,12 +14,13 @@ import {IShareRegistry} from "../src/interfaces/IShareRegistry.sol";
 import {OrderTypes} from "../src/libraries/OrderTypes.sol";
 import {MockRebasingEquityToken} from "../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../src/mocks/MockShareRegistry.sol";
+import {MockStable} from "../src/mocks/MockStable.sol";
 import {PrimaryReserveVault} from "../src/primary/PrimaryReserveVault.sol";
 import {PrimaryVenueAdapter} from "../src/primary/PrimaryVenueAdapter.sol";
 import {VenueRegistry} from "../src/router/VenueRegistry.sol";
 
 import {SafeDeployer} from "./helpers/SafeDeployer.sol";
-import {MockAdapter, MockStable} from "./mocks/SettlementMocks.sol";
+import {MockAdapter} from "./mocks/SettlementMocks.sol";
 
 /*//////////////////////////////////////////////////////////////////////////
                         SHARED FIXTURE
@@ -75,8 +76,8 @@ abstract contract PrimaryAdapterFixture is Test, SafeDeployer {
     uint256 internal constant CUSTODIED = 1e40;
 
     function _deployAndWire() internal {
-        stable = new MockStable("Stable", "USD");
-        other = new MockStable("Other", "OTH");
+        stable = new MockStable("Stable", "USD", 18);
+        other = new MockStable("Other", "OTH", 18);
 
         vm.startPrank(admin);
         shareRegistry = new MockShareRegistry(admin);

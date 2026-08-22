@@ -18,10 +18,11 @@ import {IShareRegistry} from "../src/interfaces/IShareRegistry.sol";
 import {OrderTypes} from "../src/libraries/OrderTypes.sol";
 import {MockRebasingEquityToken} from "../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../src/mocks/MockShareRegistry.sol";
+import {MockStable} from "../src/mocks/MockStable.sol";
 import {VenueRegistry} from "../src/router/VenueRegistry.sol";
 
 import {SafeDeployer} from "./helpers/SafeDeployer.sol";
-import {MockAdapter, MockStable} from "./mocks/SettlementMocks.sol";
+import {MockAdapter} from "./mocks/SettlementMocks.sol";
 import {SafeSpy, UnzeroableToken} from "./mocks/TradingModuleMocks.sol";
 
 /// @title TradingModuleTest
@@ -104,7 +105,7 @@ contract TradingModuleTest is Test, SafeDeployer {
         owners[0] = owner;
         safe = deploySafe(owners, 1);
 
-        stable = new MockStable("Stable", "USD");
+        stable = new MockStable("Stable", "USD", 18);
 
         vm.startPrank(admin);
         shareRegistry = new MockShareRegistry(admin);
@@ -730,7 +731,7 @@ contract TradingModuleTest is Test, SafeDeployer {
     function test_DeallowlistRevokesAcrossMultipleTokens() public {
         MockStable[3] memory extra;
         for (uint256 i; i < extra.length; ++i) {
-            extra[i] = new MockStable("Extra", "EX");
+            extra[i] = new MockStable("Extra", "EX", 18);
             extra[i].mint(safe, 1e24);
             _ownerCall(
                 abi.encodeCall(TradingModule.setEngineTokenAllowance, (address(engine), address(extra[i]), 1e23))
@@ -786,7 +787,7 @@ contract TradingModuleTest is Test, SafeDeployer {
     ///      that state would make the escape hatch useless precisely when it is
     ///      needed. Asserts SUCCESS rather than `EngineNotApproved`.
     function test_StandaloneRevokeWorksWhenAlreadyDeallowlisted() public {
-        MockStable other = new MockStable("Other", "OTH");
+        MockStable other = new MockStable("Other", "OTH", 18);
         _ownerCall(abi.encodeCall(TradingModule.setEngineTokenAllowance, (address(engine), address(other), 1e23)));
 
         // Deallowlist, which revokes everything in the set...
@@ -937,7 +938,7 @@ contract TradingModuleTest is Test, SafeDeployer {
 
         added = new MockStable[](room);
         for (uint256 i; i < room; ++i) {
-            added[i] = new MockStable("Filler", "FILL");
+            added[i] = new MockStable("Filler", "FILL", 18);
             added[i].mint(safe, 1e24);
             _ownerCall(
                 abi.encodeCall(TradingModule.setEngineTokenAllowance, (address(engine), address(added[i]), 1e23))
@@ -957,7 +958,7 @@ contract TradingModuleTest is Test, SafeDeployer {
     function test_TokenSetIsBoundedPerEngine() public {
         _fillTokenSet();
 
-        MockStable overflow = new MockStable("Overflow", "OVF");
+        MockStable overflow = new MockStable("Overflow", "OVF", 18);
         // Read the constant BEFORE the prank: a getter call would consume it.
         uint256 maxTokens = module.MAX_TOKENS_PER_ENGINE();
         bytes memory overflowCall =
@@ -1037,7 +1038,7 @@ contract TradingModuleTest is Test, SafeDeployer {
     function test_RevokeRemovesTokenFromSetAllowingReAdd() public {
         _fillTokenSet();
 
-        MockStable fresh = new MockStable("Fresh", "FRSH");
+        MockStable fresh = new MockStable("Fresh", "FRSH", 18);
         uint256 maxTokens = module.MAX_TOKENS_PER_ENGINE();
 
         // Full: rejected.

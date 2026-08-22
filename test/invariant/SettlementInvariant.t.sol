@@ -10,9 +10,10 @@ import {IShareRegistry} from "../../src/interfaces/IShareRegistry.sol";
 import {OrderTypes} from "../../src/libraries/OrderTypes.sol";
 import {MockRebasingEquityToken} from "../../src/mocks/MockRebasingEquityToken.sol";
 import {MockShareRegistry} from "../../src/mocks/MockShareRegistry.sol";
+import {MockStable} from "../../src/mocks/MockStable.sol";
 import {VenueRegistry} from "../../src/router/VenueRegistry.sol";
 
-import {MockAdapter, MockStable} from "../mocks/SettlementMocks.sol";
+import {MockAdapter} from "../mocks/SettlementMocks.sol";
 
 /// @title SettlementHandler
 /// @notice Bounded action surface for the settlement invariant run.
@@ -241,7 +242,7 @@ contract SettlementInvariantTest is Test {
         actors = [makeAddr("actorA"), makeAddr("actorB"), makeAddr("actorC")];
         feeCandidates = [makeAddr("feeA"), makeAddr("feeB"), makeAddr("feeC")];
 
-        stable = new MockStable("Stable", "USD");
+        stable = new MockStable("Stable", "USD", 18);
 
         vm.startPrank(admin);
         shareRegistry = new MockShareRegistry(admin);
