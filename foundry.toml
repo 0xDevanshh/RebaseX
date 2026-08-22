@@ -12,6 +12,10 @@ remappings = [
     "safe-contracts/=lib/safe-smart-account/contracts/",
 ]
 
+# Scoped write access for script/Deploy.s.sol's deployment-summary JSON.
+# Deliberately narrow: only ./deployments, not the whole repo.
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
 [fuzz]
 runs = 512
 

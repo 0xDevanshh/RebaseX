@@ -1,0 +1,25 @@
+{
+  "network": "bsc-testnet",
+  "chainId": 97,
+  "admin": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
+  "feeRecipient": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
+  "operator": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
+  "contracts": {
+    "MockShareRegistry": { "address": "0xba9B684bb809567aB843E22c0896D4Eb104f6Be6", "role": "Records underlying share units backing the mock equity token" },
+    "MockStable": { "address": "0x31079AFc9cda9775D5aC69E81B13e041177D4952", "role": "Mock 18-decimal stablecoin (mUSD), permissionless mint" },
+    "MockRebasingEquityToken": { "address": "0x52309eCD76c85f6DE126f739f7D6ce40FD151515", "role": "Rebasing tokenised equity (mEQ), share-denominated balances" },
+    "VenueRegistry": { "address": "0x6f8538E53c29A3658f73f64f9E3c50A606F06076", "role": "Maps a venueId to its adapter address" },
+    "PancakeSwapAdapter": { "address": "0x7a7124006E6623aAC43ED2a1f5aADf2E310F82a3", "role": "AMM execution venue against the real PancakeSwap V2 router" },
+    "PrimaryReserveVault": { "address": "0x089e648D8a4c9849938aB6856bF1186B39eAc610", "role": "Holds the stable reserve backing primary-market redemptions" },
+    "PrimaryVenueAdapter": { "address": "0xaB169a91529920BDFB98cE942200D3258cAd4c65", "role": "Primary market: mints/redeems the equity token at par" },
+    "SettlementEngine": { "address": "0x4437806aE8F82a4AF5ecB4D0224b561109Dc4DDC", "role": "Executes settlement: pulls funds, calls the venue, applies the fee" },
+    "Router": { "address": "0xbC369EDe27CA6e70317161bB329760c1B7A51AB1", "role": "Resolves a venueId (or runs best execution) and calls SettlementEngine" },
+    "TradingModule": { "address": "0x9371679385960005ad1E3275e8fd04b2d396D3b3", "role": "Safe module granting scoped, capped trading authority to an operator" }
+  },
+  "venues": {
+    "PANCAKE_V2": "0xbed4079be2b2085074c8e018c29e583ba528d02bf887af9ab44f3ec550095725",
+    "PRIMARY_VENUE": "0x41bd6f857c450f7ea1e8584fb36622d3646fc8d541d03f96f2db2c8b08d69024"
+  },
+  "safe": "0x12d646771c8c87c535e0eEfdAEB29880E9f52465",
+  "tradingModule": "0x9371679385960005ad1E3275e8fd04b2d396D3b3"
+}
