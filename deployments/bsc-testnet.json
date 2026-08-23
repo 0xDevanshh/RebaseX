@@ -3,7 +3,7 @@
   "chainId": 97,
   "admin": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
   "feeRecipient": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
-  "operator": "0xA095409C3Ff3742878DA7f318A73D6e4E5Ff91af",
+  "operator": "0xF4d8D7577ddEC242a45e4D69c3061392f5bf53b3",
   "contracts": {
     "MockShareRegistry": { "address": "0xba9B684bb809567aB843E22c0896D4Eb104f6Be6", "role": "Records underlying share units backing the mock equity token" },
     "MockStable": { "address": "0x31079AFc9cda9775D5aC69E81B13e041177D4952", "role": "Mock 18-decimal stablecoin (mUSD), permissionless mint" },

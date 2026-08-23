@@ -71,7 +71,20 @@ rebase," not just an assertion in a test file.
 A client never grants custody of funds to anything in this system. The Safe
 holds assets directly; every component downstream of it only ever moves
 funds *through* it, for the duration of one settlement transaction, and
-retains nothing:
+retains nothing.
+
+**Operator and owner are distinct keys, live.** At initial deployment the
+Safe owner (admin) key was also explicitly flagged as the `TradingModule`
+operator, which meant "operator cannot withdraw" was true in the contract
+logic but never actually *exercised* by this deployment — there was no
+second key anywhere to make that separation real. This was identified in a
+self-audit and fixed on-chain (`script/SeparateOperator.s.sol`): operator
+status was granted to a newly generated, independent key and revoked from
+the admin. Confirmed directly on-chain post-fix —
+`TradingModule.isOperator(admin) == false`,
+`TradingModule.isOperator(<new operator>) == true` — so the operator key now
+demonstrably lacks the Safe-owner powers the non-custodial claim rests on,
+rather than that separation being true only on paper.
 
 ```mermaid
 flowchart LR
